@@ -45,6 +45,7 @@ class Router:
     self.updates = {}
     self.relations = {}
     self.sockets = {}
+    print (networks)
     for relationship in networks:
       network, relation = relationship.split("-")
       self.sockets[network] = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
