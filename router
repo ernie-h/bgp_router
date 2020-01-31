@@ -135,10 +135,10 @@ class Router:
     for socket in self.sockets:
         newPacket = copy.deepcopy(packet)
         if(socket != packet['src']):
-            #print(socket, packet['src'])
-            newPacket['src'] = packet['dst']
+            newSource = socket[:10] + '1'
+            newPacket['src'] = newSource
             newPacket['dst'] = socket
-            newPacket['msg']['ASPath'].insert(0,int(self.asn)) 
+            newPacket['msg']['ASPath'].append(int(self.asn))
             self.sockets[socket].sendall(json.dumps(newPacket).encode())
             print("ROUTE ANNOUNCMENT TO "+ socket +": ", newPacket)
     return True
