@@ -5,7 +5,7 @@ import argparse
 import json
 import select
 import socket
-
+import copy
 ##########################################################################################
 
 # Message Fields
@@ -116,7 +116,8 @@ class Router:
   def forward(self, srcif, packet):
     """ Forward a data packet """
     # TODO
-    return False
+    
+    return True
 
   def coalesce(self):
     """ coalesce any routes that are right next to each other """
@@ -127,19 +128,19 @@ class Router:
     """ handle update packets """
     # TODO: figure out forwarding table structure 
     self.ftab[packet['src']] = packet['msg']
-    
+ 
     # TODO: Might need to store announcments as updated for this router
     self.announcements.append(packet)
    # print(self.announcements)
-
     for socket in self.sockets:
+        newPacket = copy.deepcopy(packet)
         if(socket != packet['src']):
-            print(socket, packet['src'])
-            packet['src'] = packet['dst']
-            packet['dst'] = socket
-            packet['msg']['ASPath'].insert(0,int(self.asn)) 
-            self.sockets[socket].sendall(json.dumps(packet).encode())
-            print("ROUTE ANNOUNCMENT TO "+ socket +": ", packet)
+            #print(socket, packet['src'])
+            newPacket['src'] = packet['dst']
+            newPacket['dst'] = socket
+            newPacket['msg']['ASPath'].insert(0,int(self.asn)) 
+            self.sockets[socket].sendall(json.dumps(newPacket).encode())
+            print("ROUTE ANNOUNCMENT TO "+ socket +": ", newPacket)
     return True
 
   def revoke(self, packet):
@@ -150,8 +151,14 @@ class Router:
   def dump(self, packet):
     """ handles dump table requests """
     # TODO
+    response = {}
+    response['src'] = packet['dst']
+    response['dst'] = packet['src']
+    response['type'] = "table"
+    response['msg'] = ["forwarding table entries go here"]
+    print("DUMP RESPONSE: ", response)  
     return True
-
+  
   def handle_packet(self, srcif, packet):
     """ dispatches a packet """
     # TODO
@@ -160,7 +167,10 @@ class Router:
         return self.update(srcif, packet)
     elif(t == DATA):
         print("Received data msg")
-        return True
+        return self.forward(srcif, packet)    
+    elif(t == DUMP):
+        print("Received dump msg")
+        return self.dump(packet)
     else:
         return False
 
@@ -195,3 +205,4 @@ if __name__ == "__main__":
   PARSER.add_argument('networks', metavar='networks', type=str, nargs='+', help="networks")
   ARGS = PARSER.parse_args()
   Router(ARGS.asn, ARGS.networks).run()
+
