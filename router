@@ -40,12 +40,16 @@ PROV = "prov"
 
 class Router:
   """ Your Router """
-  def __init__(self, networks):
+  def __init__(self, asn, networks):
     self.routes = {}
     self.updates = {}
     self.relations = {}
     self.sockets = {}
     print (networks)
+    self.ftab = {}
+    self.announcements=[]
+    self.asn = asn
+
     for relationship in networks:
       network, relation = relationship.split("-")
       self.sockets[network] = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
@@ -121,8 +125,22 @@ class Router:
 
   def update(self, srcif, packet):
     """ handle update packets """
-    # TODO 
-    return False
+    # TODO: figure out forwarding table structure 
+    self.ftab[packet['src']] = packet['msg']
+    
+    # TODO: Might need to store announcments as updated for this router
+    self.announcements.append(packet)
+   # print(self.announcements)
+
+    for socket in self.sockets:
+        if(socket != packet['src']):
+            print(socket, packet['src'])
+            packet['src'] = packet['dst']
+            packet['dst'] = socket
+            packet['msg']['ASPath'].insert(0,int(self.asn)) 
+            self.sockets[socket].sendall(json.dumps(packet).encode())
+            print("ROUTE ANNOUNCMENT TO "+ socket +": ", packet)
+    return True
 
   def revoke(self, packet):
     """ handle revoke packets """
@@ -137,13 +155,20 @@ class Router:
   def handle_packet(self, srcif, packet):
     """ dispatches a packet """
     # TODO
-    return False
+    t = packet['type']
+    if(t == UPDT):
+        return self.update(srcif, packet)
+    elif(t == DATA):
+        print("Received data msg")
+        return True
+    else:
+        return False
 
   def send_error(self, conn, msg):
     """ Send a no_route error message """
     # TODO
     return
-
+	
   def run(self):
     """ main loop for the router """
     while True:
@@ -169,4 +194,4 @@ if __name__ == "__main__":
   PARSER.add_argument('asn')
   PARSER.add_argument('networks', metavar='networks', type=str, nargs='+', help="networks")
   ARGS = PARSER.parse_args()
-  Router(ARGS.networks).run()
+  Router(ARGS.asn, ARGS.networks).run()
