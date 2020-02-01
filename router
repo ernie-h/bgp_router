@@ -5,7 +5,8 @@ import argparse
 import json
 import select
 import socket
-
+import copy
+import ipaddress
 ##########################################################################################
 
 # Message Fields
@@ -46,7 +47,7 @@ class Router:
     self.relations = {}
     self.sockets = {}
     print (networks)
-    self.ftab = {}
+    self.ftab = []
     self.announcements=[]
     self.asn = asn
 
@@ -60,7 +61,14 @@ class Router:
   def lookup_routes(self, daddr):
     """ Lookup all valid routes for an address """
     # TODO
+    daddr_split = daddr.split('.')
+
     outroutes = []
+    # TODO: For now compares the first prefix of the ip
+    for entry in self.ftab:
+        s1 = entry['network'].split('.')
+        if(s1[0] == daddr_split[0]):
+            outroutes.append(entry['peer'])
     return outroutes
 
   def get_shortest_as_path(self, routes):
@@ -117,6 +125,7 @@ class Router:
     peer = None
     routes = self.lookup_routes(daddr)
     # Rules go here
+<<<<<<< HEAD
     if routes:
       # # 1. Highest Preference
       # routes = self.get_highest_preference(routes)
@@ -128,13 +137,31 @@ class Router:
       # routes = self.get_origin_routes(routes)
       # # 5. Lowest IP Address
       # # TODO
+=======
+    #if routes:
+      # 1. Highest Preference
+      #routes = self.get_highest_preference(routes)
+      # 2. Self Origin
+      #routes = self.get_self_origin(routes)
+      # 3. Shortest ASPath
+      #routes = self.get_shortest_as_path(routes)
+      # 4. EGP > IGP > UNK
+      #routes = self.get_origin_routes(routes)
+      # 5. Lowest IP Address
+      # TODO
+>>>>>>> 536bdc71523325008c039ccac0c82513523f8b23
       # Final check: enforce peering relationships
-      routes = self.filter_relationships(srcif, routes)
+      #routes = self.filter_relationships(srcif, routes)
+    
+    if (len(routes) == 1):
+        peer = routes[0]
+    
     return self.sockets[peer] if peer else None
 
   def forward(self, srcif, packet):
     """ Forward a data packet """
     # TODO
+<<<<<<< HEAD
     route = get_route(srcif, packet[DEST])
     if route:
       message = copy.deepcopy(packet)
@@ -148,6 +175,18 @@ class Router:
     print("The data packet is: ", packet)
     print("The message being sent is: ", message)
     return False
+=======
+    route = self.get_route(srcif, packet['dst'])
+    if route:
+        route.sendall(json.dumps(packet).encode())
+        print("FORWARDED PACKET TO: ", route) 
+        return True
+    else:
+        packet[TYPE] =  "no route"
+        packet[MESG] = {}
+        self.sockets[srcif].sendall(json.dumps(packet).encode())
+        return False
+>>>>>>> 536bdc71523325008c039ccac0c82513523f8b23
 
   def coalesce(self):
     """ coalesce any routes that are right next to each other """
@@ -157,10 +196,14 @@ class Router:
   def update(self, srcif, packet):
     """ handle update packets """
     # TODO: figure out forwarding table structure 
-    self.ftab[packet['src']] = packet['msg']
-    
+    self.ftab.append({
+        'network': packet['msg']['network'], 
+        'netmask': packet['msg']['netmask'], 
+        'peer': packet['src']
+        }) 
     # TODO: Might need to store announcments as updated for this router
     self.announcements.append(packet)
+<<<<<<< HEAD
    # print(self.announcements)
     newPacket = packet
 
@@ -170,6 +213,15 @@ class Router:
             newPacket['src'] = packet['dst']
             newPacket['dst'] = socket
             newPacket['msg']['ASPath'].insert(0,int(self.asn)) 
+=======
+    for socket in self.sockets:
+        newPacket = copy.deepcopy(packet)
+        if(socket != packet['src']):
+            newSource = socket[:10] + '1'
+            newPacket['src'] = newSource
+            newPacket['dst'] = socket
+            newPacket['msg']['ASPath'].append(int(self.asn))
+>>>>>>> 536bdc71523325008c039ccac0c82513523f8b23
             self.sockets[socket].sendall(json.dumps(newPacket).encode())
             print("ROUTE ANNOUNCMENT TO "+ socket +": ", newPacket)
     return True
@@ -182,8 +234,15 @@ class Router:
   def dump(self, packet):
     """ handles dump table requests """
     # TODO
+    response = {}
+    response['src'] = packet['dst']
+    response['dst'] = packet['src']
+    response['type'] = "table"
+    response['msg'] = self.ftab
+    self.sockets[packet[SRCE]].sendall(json.dumps(response).encode())
+    print("TABLE MSG SENT: ", response)  
     return True
-
+  
   def handle_packet(self, srcif, packet):
     """ dispatches a packet """
     # TODO
@@ -192,7 +251,10 @@ class Router:
         return self.update(srcif, packet)
     elif(t == DATA):
         print("Received data msg")
-        return True
+        return self.forward(srcif, packet)    
+    elif(t == DUMP):
+        print("Received dump msg")
+        return self.dump(packet)
     else:
         return False
 
@@ -227,3 +289,4 @@ if __name__ == "__main__":
   PARSER.add_argument('networks', metavar='networks', type=str, nargs='+', help="networks")
   ARGS = PARSER.parse_args()
   Router(ARGS.asn, ARGS.networks).run()
+
