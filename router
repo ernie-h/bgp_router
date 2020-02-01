@@ -181,7 +181,7 @@ class Router:
     for socket in self.sockets:
         newPacket = copy.deepcopy(packet)
         if(socket != packet['src']):
-            newSource = socket[:10] + '1'
+            newSource = ('.').join(socket.split('.', 3)[:3]) + '.1'
             newPacket['src'] = newSource
             newPacket['dst'] = socket
             newPacket['msg']['ASPath'].append(int(self.asn))
