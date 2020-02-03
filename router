@@ -152,7 +152,7 @@ class Router:
   def forward(self, srcif, packet):
     """ Forward a data packet """
     # TODO
-    route = self.get_route(srcif, packet['dst'])
+    route = self.get_route(srcif, packet[DEST])
     if route:
         route.sendall(json.dumps(packet).encode())
         print("FORWARDED PACKET TO: ", route) 
@@ -172,19 +172,19 @@ class Router:
     """ handle update packets """
     # TODO: figure out forwarding table structure 
     self.ftab.append({
-        'network': packet['msg']['network'], 
-        'netmask': packet['msg']['netmask'], 
-        'peer': packet['src']
+        'network': packet[MESG][NTWK], 
+        'netmask': packet[MESG][NMSK], 
+        'peer': packet[SRCE]
         }) 
     # TODO: Might need to store announcments as updated for this router
     self.announcements.append(packet)
     for socket in self.sockets:
         newPacket = copy.deepcopy(packet)
-        if(socket != packet['src']):
+        if(socket != packet[SRCE]):
             newSource = ('.').join(socket.split('.', 3)[:3]) + '.1'
-            newPacket['src'] = newSource
-            newPacket['dst'] = socket
-            newPacket['msg']['ASPath'].append(int(self.asn))
+            newPacket[SRCE] = newSource
+            newPacket[DEST] = socket
+            newPacket[MESG][APTH].append(int(self.asn))
             self.sockets[socket].sendall(json.dumps(newPacket).encode())
             print("ROUTE ANNOUNCMENT TO "+ socket +": ", newPacket)
     return True
@@ -198,10 +198,10 @@ class Router:
     """ handles dump table requests """
     # TODO
     response = {}
-    response['src'] = packet['dst']
-    response['dst'] = packet['src']
-    response['type'] = "table"
-    response['msg'] = self.ftab
+    response[SRCE] = packet[DEST]
+    response[DEST] = packet[SRCE]
+    response[TYPE] = TABL
+    response[MESG] = self.ftab
     self.sockets[packet[SRCE]].sendall(json.dumps(response).encode())
     print("TABLE MSG SENT: ", response)  
     return True
