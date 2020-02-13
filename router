@@ -76,12 +76,16 @@ class Router:
     # TODO
     outroutes = []
     min = 0
+    print("routes", routes)
     for route in routes:
-      if len(route[APTH]) == min:
-        outroutes.append(route)
-      elif len(route[APTH]) < min:
-        min = len(route[APTH])
-        outroutes = [route]
+      for e in self.ftab: 
+        if e[PEER] == route:
+          print("len", len(e[APTH]))
+          if len(e[APTH]) == min:
+            outroutes.append(route)
+          elif len(e[APTH]) < min or len(outroutes) == 0:
+            min = len(e[APTH])
+            outroutes = [route]
     return outroutes
 
   def get_highest_preference(self, routes):
@@ -99,15 +103,17 @@ class Router:
             outroutes = [route]
             break
     return outroutes
-
+    
   def get_self_origin(self, routes):
     """ select self originating routes """
     outroutes = []
     for route in routes:
-      if route[SORG]:
-        outroutes.append(route)
+      for e in self.ftab:
+        if e[PEER] == route:
+          if e[SORG]:
+            outroutes.append(route)
     return outroutes
-
+  
   def get_origin_routes(self, routes):
     """ select origin routes: EGP > IGP > UNK """
     outroutes = []
@@ -137,9 +143,9 @@ class Router:
       # 1. Highest Preference
       routes = self.get_highest_preference(routes)
       # 2. Self Origin
-      #routes = self.get_self_origin(routes)
+      routes = self.get_self_origin(routes)
       # 3. Shortest ASPath
-      #routes = self.get_shortest_as_path(routes)
+      routes = self.get_shortest_as_path(routes)
       # 4. EGP > IGP > UNK
       #routes = self.get_origin_routes(routes)
       # 5. Lowest IP Address
