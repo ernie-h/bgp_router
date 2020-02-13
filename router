@@ -62,7 +62,7 @@ class Router:
     """ Lookup all valid routes for an address """
     # TODO
     daddr_split = daddr.split('.')
-
+    print("FORWARDING TABLE ", self.ftab)
     outroutes = []
     # TODO: For now compares the first prefix of the ip
     for entry in self.ftab:
@@ -88,7 +88,6 @@ class Router:
 
   def get_highest_preference(self, routes):
     """ select the route with the highest "localpref" """
-    print("routes", routes)
     # TODO
     outroutes = []
     max = 0
@@ -100,17 +99,21 @@ class Router:
           elif e[LPRF] > max:
             max = e[LPRF]
             outroutes = [route]
-            break
-    print("outroutes", outroutes)
     return outroutes
     
   def get_self_origin(self, routes):
     """ select self originating routes """
     outroutes = []
+    seenTrue = False
     for route in routes:
       for e in self.ftab:
         if e[PEER] == route:
           if e[SORG]:
+            if seenTrue == False:
+              outroutes = []  
+            outroutes.append(route)
+            seenTrue = True
+          elif not seenTrue:
             outroutes.append(route)
     return outroutes
 
@@ -121,7 +124,7 @@ class Router:
     origin = 3
     for route in routes:
       for e in self.ftab:
-        if e[PEER] == route:
+     #   if e[PEER] == route:
           if origins[e[ORIG]] < origin:
             origin = origins[e[ORIG]]
             outroutes = [route]
@@ -132,6 +135,7 @@ class Router:
   def filter_relationships(self, srcif, routes):
     """ Don't allow Peer->Peer, Peer->Prov, or Prov->Peer forwards """
     outroutes = []
+    #source = self.
     return outroutes
   
   #def get_highest_prefix(self, daddr, routes):
@@ -142,27 +146,32 @@ class Router:
     # TODO
     peer = None
     routes = self.lookup_routes(daddr)
+    print("ROUTES AFTER LOOKUP ROUTES:", routes)
     # routes = self.get_highest_prefix(routes)
     # Rules go here
     if len(routes) > 1:
       # 1. Highest Preference
       routes = self.get_highest_preference(routes)
       # 2. Self Origin
+      print("ROUTES FOR HIGHEST PREF", routes)
       routes = self.get_self_origin(routes)
+      print("ROUTES FOR self origin", routes)
       # 3. Shortest ASPath
-      routes = self.get_shortest_as_path(routes)
+      #routes = self.get_shortest_as_path(routes)
       # 4. EGP > IGP > UNK
-      routes = self.get_origin_routes(routes)
+      #routes = self.get_origin_routes(routes)
       # 5. Lowest IP Address
       # TODO
-      # routes = [min(routes)] 
+      #routes = [min(routes)] 
        
     # Final check: enforce peering relationships
     #routes = self.filter_relationships(srcif, routes)
     
     if (len(routes) == 1):
         peer = routes[0]
-    
+        print("ROUTES IS OF LENGTH 1")
+    else:
+        print("ERROR MORE THAN 1 ROUTE", routes) 
     return self.sockets[peer] if peer else None
 
   def forward(self, srcif, packet):
@@ -173,6 +182,7 @@ class Router:
     if route:
         route.sendall(json.dumps(packet).encode())
         print("FORWARDED PACKET TO: ", route) 
+        print('\n')
         return True
     else:
         packet[TYPE] =  "no route"
