@@ -179,7 +179,9 @@ class Router:
         'netmask': packet[MESG][NMSK], 
         'peer': packet[SRCE],
         'localpref': packet[MESG][LPRF],
-        'ASPath': packet[MESG][APTH]
+        'ASPath': packet[MESG][APTH],
+        'origin': packet[MESG][ORIG],
+        'selfOrigin': packet[MESG][SORG]
         }) 
     # TODO: Might need to store announcments as updated for this router
     self.announcements.append(packet)
