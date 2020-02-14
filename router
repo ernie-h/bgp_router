@@ -59,27 +59,28 @@ class Router:
       self.sockets[network].connect(network)
       self.relations[network] = relation
 
+ # TODO: For now compares the first prefix of the ip 
+  def similar_network(self, n1, n2):
+    n1_split = n1.split('.')
+    n2_split = n2.split('.')
+    return n1_split[0] == n2_split[0]
+  
   def lookup_routes(self, daddr):
     """ Lookup all valid routes for an address """
-    # TODO
-    daddr_split = daddr.split('.')
     print("FORWARDING TABLE ", self.ftab)
     outroutes = []
-    # TODO: For now compares the first prefix of the ip
     for entry in self.ftab:
-        s1 = entry['network'].split('.')
-        if(s1[0] == daddr_split[0]):
+        if self.similar_network(entry['network'], daddr):
             outroutes.append(entry['peer'])
     return outroutes
 
-  def get_shortest_as_path(self, routes):
+  def get_shortest_as_path(self, routes, daddr):
     """ select the route with the shortest AS Path """
-    # TODO
     outroutes = []
     min = 0
     for route in routes:
       for e in self.ftab: 
-        if e[PEER] == route:
+        if e[PEER] == route and self.similar_network(e[NTWK], daddr):
           if len(e[APTH]) == min:
             outroutes.append(route)
           elif len(e[APTH]) < min or len(outroutes) == 0:
@@ -87,14 +88,14 @@ class Router:
             outroutes = [route]
     return outroutes
 
-  def get_highest_preference(self, routes):
+  def get_highest_preference(self, routes, daddr):
     """ select the route with the highest "localpref" """
     # TODO
     outroutes = []
     max = 0
     for route in routes:
       for e in self.ftab:
-        if e[PEER] == route:
+        if e[PEER] == route and self.similar_network(e[NTWK], daddr):
           if e[LPRF] == max and route not in outroutes:
             outroutes.append(route)
           elif e[LPRF] > max:
@@ -102,30 +103,28 @@ class Router:
             outroutes = [route]
     return outroutes
     
-  def get_self_origin(self, routes):
+  def get_self_origin(self, routes, daddr):
     """ select self originating routes """
     outroutes = []
-    seenTrue = False
+    all_false = True
     for route in routes:
       for e in self.ftab:
-        if e[PEER] == route:
-          if e[SORG]:
-            if seenTrue == False:
-              outroutes = []  
-            outroutes.append(route)
-            seenTrue = True
-          elif not seenTrue:
-            outroutes.append(route)
+        if e[PEER] == route and self.similar_network(e[NTWK], daddr):
+            if e[SORG]:
+                outroutes.append(route)
+                all_false= False
+            elif all_false:
+                return routes
     return outroutes
 
-  def get_origin_routes(self, routes):
+  def get_origin_routes(self, routes, daddr):
     """ select origin routes: EGP > IGP > UNK """
     outroutes = []
-    origins = {"EGP": 2, "IGP": 1, "UNK": 3}
+    origins = {"IGP": 1,"EGP": 2,"UNK": 3}
     origin = 3
     for route in routes:
       for e in self.ftab:
-     #   if e[PEER] == route:
+        if e[PEER] == route and self.similar_network(e[NTWK], daddr):
           if origins[e[ORIG]] < origin:
             origin = origins[e[ORIG]]
             outroutes = [route]
@@ -152,18 +151,19 @@ class Router:
     # Rules go here
     if len(routes) > 1:
       # 1. Highest Preference
-      routes = self.get_highest_preference(routes)
+      routes = self.get_highest_preference(routes, daddr)
       # 2. Self Origin
       print("ROUTES FOR HIGHEST PREF", routes)
-      routes = self.get_self_origin(routes)
+      routes = self.get_self_origin(routes, daddr)
       print("ROUTES FOR self origin", routes)
       # 3. Shortest ASPath
-      #routes = self.get_shortest_as_path(routes)
-      # 4. EGP > IGP > UNK
-      #routes = self.get_origin_routes(routes)
+      routes = self.get_shortest_as_path(routes, daddr)
+      print("ROUTES FOR ASPATH", routes)
+      # 4. IGP > EGP > UNK
+      routes = self.get_origin_routes(routes, daddr)
+      print("ROUTES FOR ASPATH", routes)
       # 5. Lowest IP Address
-      # TODO
-      #routes = [min(routes)] 
+      routes = [min(routes)] 
        
     # Final check: enforce peering relationships
     #routes = self.filter_relationships(srcif, routes)
