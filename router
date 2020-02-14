@@ -306,10 +306,13 @@ class Router:
     originalUpdates = copy.deepcopy(self.updates)
     # self.updates = []
     # self.ftab = []
-
+    print("revoke packet info: ", packet)
     for update in originalUpdates:
-      print("update!: ", update)
       print('\n')
+      if update[TYPE] == UPDT:
+        print("update route", update)
+      elif update[TYPE] == RVKE:
+        print("revoke update", update)
 
 
  
