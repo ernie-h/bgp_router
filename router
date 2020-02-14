@@ -119,7 +119,7 @@ class Router:
   def get_origin_routes(self, routes, daddr):
     """ select origin routes: EGP > IGP > UNK """
     outroutes = []
-    origins = {"EGP": 2, "IGP": 1, "UNK": 3}
+    origins = {"IGP": 1,"EGP": 2,"UNK": 3}
     origin = 3
     for route in routes:
       for e in self.ftab:
@@ -158,8 +158,10 @@ class Router:
       # 3. Shortest ASPath
       routes = self.get_shortest_as_path(routes, daddr)
       print("ROUTES FOR ASPATH", routes)
-      # 4. EGP > IGP > UNK
-      #routes = self.get_origin_routes(routes)
+      # 4. IGP > EGP > UNK
+      routes = self.get_origin_routes(routes, daddr)
+      print("ROUTES FOR ASPATH", routes)
+
       # 5. Lowest IP Address
       # TODO
       #routes = [min(routes)] 
