@@ -134,10 +134,16 @@ class Router:
 
   def filter_relationships(self, srcif, routes):
     """ Don't allow Peer->Peer, Peer->Prov, or Prov->Peer forwards """
-    outroutes = []
-    #source = self.
-    return outroutes
+    src_relation = self.relations[srcif]
+    print("SRCIF RELATION", src_relation)
+    if src_relation == PEER or src_relation == PROV:
+        return list(filter(lambda x: self.relations[x] == CUST, routes))
+    else: 
+        return routes
   
+  def cust_only(x):
+      return self.relations[x] == PEER or self.relations[x] == PROV
+
   #def get_highest_prefix(self, daddr, routes):
    # netmaskLength = 
 
@@ -149,7 +155,7 @@ class Router:
     print("ROUTES AFTER LOOKUP ROUTES:", routes)
     # routes = self.get_highest_prefix(routes)
     # Rules go here
-    if len(routes) > 1:
+    if routes:
       # 1. Highest Preference
       routes = self.get_highest_preference(routes, daddr)
       # 2. Self Origin
@@ -161,13 +167,13 @@ class Router:
       print("ROUTES FOR ASPATH", routes)
       # 4. IGP > EGP > UNK
       routes = self.get_origin_routes(routes, daddr)
-      print("ROUTES FOR ASPATH", routes)
+      print("ROUTES FOR ORIGIN", routes)
       # 5. Lowest IP Address
       routes = [min(routes)] 
-       
-    # Final check: enforce peering relationships
-    #routes = self.filter_relationships(srcif, routes)
-    
+      print("ROUTES FOR LOWEST IP", routes)
+      # Final check: enforce peering relationships
+      print("RELATIONS", self.relations)
+      routes = self.filter_relationships(srcif, routes)
     if (len(routes) == 1):
         peer = routes[0]
         print("ROUTES IS OF LENGTH 1")
