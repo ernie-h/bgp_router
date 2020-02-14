@@ -132,14 +132,21 @@ class Router:
             outroutes.append(route)
     return outroutes 
 
-  def filter_relationships(self, srcif, routes):
+  def filter_relationships(self, srcif, daddr, routes):
     """ Don't allow Peer->Peer, Peer->Prov, or Prov->Peer forwards """
+    outroutes = []
     src_relation = self.relations[srcif]
-    print("SRCIF RELATION", src_relation)
-    if src_relation == PEER or src_relation == PROV:
-        return list(filter(lambda x: self.relations[x] == CUST, routes))
-    else: 
-        return routes
+    # source or destination router is a customer => foward data
+    # source is peer or provider => forward if dest is customer
+    for route in routes:
+      dest_relation = self.relations[route]
+      if dest_relation == CUST:
+        outroutes.append(route)
+      elif src_relation == CUST:
+        outroutes.append(route)
+      else:
+        return []
+    return outroutes
   
   def cust_only(x):
       return self.relations[x] == PEER or self.relations[x] == PROV
@@ -173,7 +180,7 @@ class Router:
       print("ROUTES FOR LOWEST IP", routes)
       # Final check: enforce peering relationships
       print("RELATIONS", self.relations)
-      routes = self.filter_relationships(srcif, routes)
+      routes = self.filter_relationships(srcif, daddr, routes)
     if (len(routes) == 1):
         peer = routes[0]
         print("ROUTES IS OF LENGTH 1")
@@ -192,6 +199,8 @@ class Router:
     else:
         packet[TYPE] =  "no route"
         packet[MESG] = {}
+        packet[DEST] = packet[SRCE]
+        packet[SRCE] = ('.').join(srcif.split('.', 3)[:3]) + '.1'
         self.sockets[srcif].sendall(json.dumps(packet).encode())
         return False
 
@@ -214,15 +223,21 @@ class Router:
         }) 
     # TODO: Might need to store announcments as updated for this router
     self.announcements.append(packet)
+    src_relationship = self.relations[srcif]
     for socket in self.sockets:
-        newPacket = copy.deepcopy(packet)
-        if(socket != packet[SRCE]):
-            newSource = ('.').join(socket.split('.', 3)[:3]) + '.1'
-            newPacket[SRCE] = newSource
-            newPacket[DEST] = socket
-            newPacket[MESG][APTH].append(int(self.asn))
-            self.sockets[socket].sendall(json.dumps(newPacket).encode())
-            print("ROUTE ANNOUNCMENT TO "+ socket +": ", newPacket)
+      newPacket = copy.deepcopy(packet)
+      newSource = ('.').join(socket.split('.', 3)[:3]) + '.1'
+      newPacket[SRCE] = newSource
+      newPacket[DEST] = socket
+      newPacket[MESG][APTH].append(int(self.asn))
+      dest_relationship = self.relations[socket]
+      if src_relationship == CUST:
+        if(socket != srcif):
+          self.sockets[socket].sendall(json.dumps(newPacket).encode())
+          print("ROUTE ANNOUNCMENT TO "+ socket +": ", newPacket)
+      elif dest_relationship == CUST:
+        self.sockets[socket].sendall(json.dumps(newPacket).encode())
+        print("ROUTE ANNOUNCMENT TO "+ socket +": ", newPacket)
     return True
 
   def revoke(self, packet):
