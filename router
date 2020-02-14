@@ -309,14 +309,18 @@ class Router:
     self.ftab = []
     print("revoke packet info: ", packet)
     for update in originalUpdates:
-      if update[SRCE] != packet[SRCE] and update[DEST] != packet[DEST] and update[MESG][NTWK] != packet[MESG][NTWK] and update[MESG][NMSK] != packet[MESG][NMSK]:
-        print('\n')
-        if update[TYPE] == UPDT:
-          self.update(update['srcif'], update)
-          print("update route", update)
-        elif update[TYPE] == RVKE:
-          self.revoke(update)
-          print("revoke update", update)
+      print(update[SRCE])
+      print(packet[SRCE])
+      print(update[MESG][NTWK])
+      print(packet[MESG][NTWK])
+      # if update[SRCE] != packet[SRCE] and update[DEST] != packet[DEST] and update[MESG][NTWK] != packet[MESG][NTWK] and update[MESG][NMSK] != packet[MESG][NMSK]:
+      #   print('\n')
+      #   if update[TYPE] == UPDT:
+      #     self.update(update['srcif'], update)
+      #     print("update route", update)
+      #   elif update[TYPE] == RVKE:
+      #     self.revoke(update)
+      #     print("revoke update", update)
 
 
  
