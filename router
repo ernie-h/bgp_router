@@ -43,13 +43,11 @@ class Router:
   """ Your Router """
   def __init__(self, asn, networks):
     self.routes = {}
-    self.updates = {}
+    self.updates = []
     self.relations = {}
     self.sockets = {}
     print (networks)
     self.ftab = []
-    self.announcements=[]
-    self.revocations = []
     self.asn = asn
 
     for relationship in networks:
@@ -285,7 +283,7 @@ class Router:
           SORG: msg[SORG]
           }) 
     # TODO: Might need to store announcments as updated for this router
-    self.announcements.append(packet)
+    self.updates.append(packet)
     src_relationship = self.relations[srcif]
     for socket in self.sockets:
       newPacket = copy.deepcopy(packet)
@@ -303,13 +301,27 @@ class Router:
         print("ROUTE ANNOUNCMENT TO "+ socket +": ", newPacket)
     return True
 
+  def rebuildForwardingTable(self, packet):
+    # use revoke and update messages
+    originalUpdates = copy.deepcopy(self.updates)
+    # self.updates = []
+    # self.ftab = []
+
+    for update in originalUpdates:
+      print("update!: ", update)
+      print('\n')
+
+
+ 
+
   def revoke(self, packet):
     """ handle revoke packets """
-    # save copy of revocation
-    self.revocations.append(packet)
+    # save copy of revocation?
+    self.updates.append(packet)
     
     # remove dead entry from forwarding table
     for network in packet[MESG]:
+      self.rebuildForwardingTable(packet)
       for entry in self.ftab:
         if packet[SRCE] == entry[PEER] and entry[NTWK] == network[NTWK] and entry[NMSK] == network[NMSK]:
           self.ftab.remove(entry)
