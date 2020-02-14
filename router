@@ -58,16 +58,18 @@ class Router:
       self.sockets[network].connect(network)
       self.relations[network] = relation
 
+ # TODO: For now compares the first prefix of the ip 
+  def similar_network(self, n1, n2):
+    n1_split = n1.split('.')
+    n2_split = n2.split('.')
+    return n1_split[0] == n2_split[0]
+  
   def lookup_routes(self, daddr):
     """ Lookup all valid routes for an address """
-    # TODO
-    daddr_split = daddr.split('.')
     print("FORWARDING TABLE ", self.ftab)
     outroutes = []
-    # TODO: For now compares the first prefix of the ip
     for entry in self.ftab:
-        s1 = entry['network'].split('.')
-        if(s1[0] == daddr_split[0]):
+        if self.similar_network(entry['network'], daddr):
             outroutes.append(entry['peer'])
     return outroutes
 
@@ -86,14 +88,14 @@ class Router:
             outroutes = [route]
     return outroutes
 
-  def get_highest_preference(self, routes):
+  def get_highest_preference(self, routes, daddr):
     """ select the route with the highest "localpref" """
     # TODO
     outroutes = []
     max = 0
     for route in routes:
       for e in self.ftab:
-        if e[PEER] == route:
+        if e[PEER] == route and self.similar_network(e[NTWK], daddr):
           if e[LPRF] == max and route not in outroutes:
             outroutes.append(route)
           elif e[LPRF] > max:
@@ -101,20 +103,19 @@ class Router:
             outroutes = [route]
     return outroutes
     
-  def get_self_origin(self, routes):
+  def get_self_origin(self, routes, daddr):
     """ select self originating routes """
     outroutes = []
-    seenTrue = False
+    all_false = True
     for route in routes:
       for e in self.ftab:
-        if e[PEER] == route:
-          if e[SORG]:
-            if seenTrue == False:
-              outroutes = []  
-            outroutes.append(route)
-            seenTrue = True
-          elif not seenTrue:
-            outroutes.append(route)
+        if e[PEER] == route and self.similar_network(e[NTWK], daddr):
+            print (e[SORG])
+            if e[SORG]:
+                outroutes.append(route)
+                all_false= False
+            elif all_false:
+                return routes
     return outroutes
 
   def get_origin_routes(self, routes):
@@ -151,10 +152,10 @@ class Router:
     # Rules go here
     if len(routes) > 1:
       # 1. Highest Preference
-      routes = self.get_highest_preference(routes)
+      routes = self.get_highest_preference(routes, daddr)
       # 2. Self Origin
       print("ROUTES FOR HIGHEST PREF", routes)
-      routes = self.get_self_origin(routes)
+      routes = self.get_self_origin(routes, daddr)
       print("ROUTES FOR self origin", routes)
       # 3. Shortest ASPath
       #routes = self.get_shortest_as_path(routes)
