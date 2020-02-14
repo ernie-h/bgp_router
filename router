@@ -73,14 +73,13 @@ class Router:
             outroutes.append(entry['peer'])
     return outroutes
 
-  def get_shortest_as_path(self, routes):
+  def get_shortest_as_path(self, routes, daddr):
     """ select the route with the shortest AS Path """
-    # TODO
     outroutes = []
     min = 0
     for route in routes:
       for e in self.ftab: 
-        if e[PEER] == route:
+        if e[PEER] == route and self.similar_network(e[NTWK], daddr):
           if len(e[APTH]) == min:
             outroutes.append(route)
           elif len(e[APTH]) < min or len(outroutes) == 0:
@@ -110,7 +109,6 @@ class Router:
     for route in routes:
       for e in self.ftab:
         if e[PEER] == route and self.similar_network(e[NTWK], daddr):
-            print (e[SORG])
             if e[SORG]:
                 outroutes.append(route)
                 all_false= False
@@ -118,14 +116,14 @@ class Router:
                 return routes
     return outroutes
 
-  def get_origin_routes(self, routes):
+  def get_origin_routes(self, routes, daddr):
     """ select origin routes: EGP > IGP > UNK """
     outroutes = []
     origins = {"EGP": 2, "IGP": 1, "UNK": 3}
     origin = 3
     for route in routes:
       for e in self.ftab:
-     #   if e[PEER] == route:
+        if e[PEER] == route and self.similar_network(e[NTWK], daddr):
           if origins[e[ORIG]] < origin:
             origin = origins[e[ORIG]]
             outroutes = [route]
@@ -158,7 +156,8 @@ class Router:
       routes = self.get_self_origin(routes, daddr)
       print("ROUTES FOR self origin", routes)
       # 3. Shortest ASPath
-      #routes = self.get_shortest_as_path(routes)
+      routes = self.get_shortest_as_path(routes, daddr)
+      print("ROUTES FOR ASPATH", routes)
       # 4. EGP > IGP > UNK
       #routes = self.get_origin_routes(routes)
       # 5. Lowest IP Address
