@@ -49,6 +49,7 @@ class Router:
     print (networks)
     self.ftab = []
     self.announcements=[]
+    self.revocations = []
     self.asn = asn
 
     for relationship in networks:
@@ -223,6 +224,39 @@ class Router:
   def revoke(self, packet):
     """ handle revoke packets """
     # TODO
+    # save copy of revocation
+    self.revocations.append(packet)
+    
+    # remove dead entry from forwarding table
+ 
+    # send copies of revocation to neighbors
+    newPacket = copy.deepcopy(packet)
+    # update received from customer -> send updates to all neighbors
+    # update received from peer/provider -> send updates to customers
+    # if self.relations[network] == CUST or PEER or PROV
+    relationToMessageSender = self.relations[packet[SRCE]]
+    if relationToMessageSender == CUST:
+      # send to all neighbors
+      for socket in self.sockets:
+        if (socket != packet[SRCE]):
+            newSource = ('.').join(socket.split('.', 3)[:3]) + '.1'
+            newPacket[SRCE] = newSource
+            newPacket[DEST] = socket
+            self.sockets[socket].sendall(json.dumps(newPacket).encode())
+            print("REVOKE ANNOUNCMENT TO "+ socket +": ", newPacket)
+      print("send to neighbors")
+    elif relationToMessageSender == PEER or relationToMessageSender == PROV:
+      # send to all customers
+      # TODO: socket for socket in self.sockets
+      print("send to all customers")
+      for socket in self.sockets:
+        relationToSocket == self.relations[socket]
+        if relationToSocket == CUST:
+            newSource = ('.').join(socket.split('.', 3)[:3]) + '.1'
+            newPacket[SRCE] = newSource
+            newPacket[DEST] = socket
+            self.sockets[socket].sendall(json.dumps(newPacket).encode())
+            print("REVOKE ANNOUNCMENT TO "+ socket +": ", newPacket)
     return True
 
   def dump(self, packet):
@@ -249,6 +283,9 @@ class Router:
     elif(t == DUMP):
         print("Received dump msg")
         return self.dump(packet)
+    elif(t == RVKE):
+        print("Received revoke msg")
+        return self.revoke(packet)
     else:
         return False
 
