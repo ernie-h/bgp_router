@@ -177,8 +177,6 @@ class Router:
 
   def forward(self, srcif, packet):
     """ Forward a data packet """
-    # TODO
-    print("PACKET: ", packet)
     route = self.get_route(srcif, packet[DEST])
     if route:
         route.sendall(json.dumps(packet).encode())
@@ -223,17 +221,19 @@ class Router:
 
   def revoke(self, packet):
     """ handle revoke packets """
-    # TODO
     # save copy of revocation
     self.revocations.append(packet)
     
     # remove dead entry from forwarding table
- 
+    for network in packet[MESG]:
+      for entry in self.ftab:
+        if packet[SRCE] == entry[PEER] and entry[NTWK] == network[NTWK] and entry[NMSK] == network[NMSK]:
+          self.ftab.remove(entry)
+
     # send copies of revocation to neighbors
     newPacket = copy.deepcopy(packet)
     # update received from customer -> send updates to all neighbors
     # update received from peer/provider -> send updates to customers
-    # if self.relations[network] == CUST or PEER or PROV
     relationToMessageSender = self.relations[packet[SRCE]]
     if relationToMessageSender == CUST:
       # send to all neighbors
@@ -244,11 +244,8 @@ class Router:
             newPacket[DEST] = socket
             self.sockets[socket].sendall(json.dumps(newPacket).encode())
             print("REVOKE ANNOUNCMENT TO "+ socket +": ", newPacket)
-      print("send to neighbors")
     elif relationToMessageSender == PEER or relationToMessageSender == PROV:
       # send to all customers
-      # TODO: socket for socket in self.sockets
-      print("send to all customers")
       for socket in self.sockets:
         relationToSocket == self.relations[socket]
         if relationToSocket == CUST:
