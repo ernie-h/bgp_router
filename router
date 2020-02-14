@@ -151,8 +151,29 @@ class Router:
   def cust_only(x):
       return self.relations[x] == PEER or self.relations[x] == PROV
 
-  #def get_highest_prefix(self, daddr, routes):
-   # netmaskLength = 
+
+  def get_highest_prefix(self, daddr, routes):
+    outroutes = []
+    highest_prefix = 0
+    dest = daddr.split(".")
+    for entry in self.ftab:
+      matches = 0
+    # apply netmask to network
+      network = entry[NTWK].split(".")
+      netmask = entry[NMSK].split(".")
+      for i in range(4):
+        bitAnd = int(network[i]) & int(netmask[i])
+        if bitAnd == int(dest[i]):
+          matches += 1
+        else:
+          break
+      if matches > highest_prefix:
+        highest_prefix = matches
+        outroutes = [entry[PEER]]
+      elif matches == highest_prefix:
+        outroutes.append(entry[PEER])
+    return outroutes
+
 
   def get_route(self, srcif, daddr):
     """ Select the best route for a given address """
@@ -160,7 +181,7 @@ class Router:
     peer = None
     routes = self.lookup_routes(daddr)
     print("ROUTES AFTER LOOKUP ROUTES:", routes)
-    # routes = self.get_highest_prefix(routes)
+    routes = self.get_highest_prefix(daddr, routes)
     # Rules go here
     if routes:
       # 1. Highest Preference
