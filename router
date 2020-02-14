@@ -283,6 +283,7 @@ class Router:
           SORG: msg[SORG]
           }) 
     # TODO: Might need to store announcments as updated for this router
+    packet['srcif'] = srcif
     self.updates.append(packet)
     src_relationship = self.relations[srcif]
     for socket in self.sockets:
@@ -304,15 +305,18 @@ class Router:
   def rebuildForwardingTable(self, packet):
     # use revoke and update messages
     originalUpdates = copy.deepcopy(self.updates)
-    # self.updates = []
-    # self.ftab = []
+    self.updates = []
+    self.ftab = []
     print("revoke packet info: ", packet)
     for update in originalUpdates:
-      print('\n')
-      if update[TYPE] == UPDT:
-        print("update route", update)
-      elif update[TYPE] == RVKE:
-        print("revoke update", update)
+      if update[SRCE] != packet[SRCE] and update[DEST] != packet[DEST] and update[MESG][NTWK] != packet[MESG][NTWK] and update[MESG][NMSK] != packet[MESG][NMSK]:
+        print('\n')
+        if update[TYPE] == UPDT:
+          self.update(update['srcif'], update)
+          print("update route", update)
+        elif update[TYPE] == RVKE:
+          self.revoke(update)
+          print("revoke update", update)
 
 
  
