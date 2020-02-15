@@ -46,7 +46,6 @@ class Router:
     self.updates = {}
     self.relations = {}
     self.sockets = {}
-    print (networks)
     self.ftab = []
     self.announcements=[]
     self.revocations = []
@@ -67,7 +66,6 @@ class Router:
   
   def lookup_routes(self, daddr):
     """ Lookup all valid routes for an address """
-    print("FORWARDING TABLE ", self.ftab)
     outroutes = []
     for entry in self.ftab:
         if self.similar_network(entry['network'], daddr):
@@ -180,33 +178,23 @@ class Router:
     # TODO
     peer = None
     routes = self.lookup_routes(daddr)
-    print("ROUTES AFTER LOOKUP ROUTES:", routes)
     routes = self.get_highest_prefix(daddr, routes)
     # Rules go here
     if routes:
       # 1. Highest Preference
       routes = self.get_highest_preference(routes, daddr)
       # 2. Self Origin
-      print("ROUTES FOR HIGHEST PREF", routes)
       routes = self.get_self_origin(routes, daddr)
-      print("ROUTES FOR self origin", routes)
       # 3. Shortest ASPath
       routes = self.get_shortest_as_path(routes, daddr)
-      print("ROUTES FOR ASPATH", routes)
       # 4. IGP > EGP > UNK
       routes = self.get_origin_routes(routes, daddr)
-      print("ROUTES FOR ORIGIN", routes)
       # 5. Lowest IP Address
       routes = [min(routes)] 
-      print("ROUTES FOR LOWEST IP", routes)
       # Final check: enforce peering relationships
-      print("RELATIONS", self.relations)
       routes = self.filter_relationships(srcif, daddr, routes)
     if (len(routes) == 1):
         peer = routes[0]
-        print("ROUTES IS OF LENGTH 1")
-    else:
-        print("ERROR MORE THAN 1 ROUTE", routes) 
     return self.sockets[peer] if peer else None
 
   def forward(self, srcif, packet):
@@ -232,9 +220,7 @@ class Router:
           if s1[i] == s2[i]:
             continue
           elif abs(int(s1[i]) - int(s2[i])) == 1:
-              print("AN ADJACENT NEIGHBOR")
               return True
-      print("NOT ADJACENT NEIGHBOR")
       return False
 
   def same_atts(self, entry, packet):
@@ -243,7 +229,6 @@ class Router:
   
   def shift_mask_bit(self, mask):
       s = mask.split(".")
-      print("MASK", mask)
       for i in range(4):
           if not s[i] == '255':
               oct = s[i]
@@ -251,13 +236,10 @@ class Router:
               if s[i] == '0':
                   oct = s[i-1]
                   currIdx= i-1
-              print("OCT", oct)
               temp = int(bin(int(oct)<<1)[3:],2)
               s[currIdx] = str(temp)
-              print("SHIFTED OCT", temp)
               break
       shifted_mask = '.'.join(s)
-      print("SHIFTED MASK", shifted_mask)
       return shifted_mask
 
 
@@ -303,17 +285,39 @@ class Router:
         print("ROUTE ANNOUNCMENT TO "+ socket +": ", newPacket)
     return True
 
+  def rebuildForwardingTable(self, packet):
+    # use revoke and update messages
+    originalUpdates = copy.deepcopy(self.updates)
+    self.updates = []
+    self.ftab = []
+    for update in originalUpdates:
+      for network in packet[MESG]:
+        # if it isn't the network being revoked 
+        # update the route
+        if update[TYPE] == UPDT:
+          sameSource = update[SRCE] == packet[SRCE]
+          sameDest = update[DEST] == packet[DEST]
+          sameNetwork = update[MESG][NTWK] == network[NTWK]
+          sameNetmask = update[MESG][NMSK] == network[NMSK]
+          sameNetworkBeingRevoked = sameSource and sameDest and sameNetwork and sameNetmask
+          if not sameNetworkBeingRevoked:
+          # continue to update ftable
+            self.update(update['srcif'], update)
+
+      if update[TYPE] == RVKE:
+        self.revoke(update)
+ 
+
   def revoke(self, packet):
     """ handle revoke packets """
-    # save copy of revocation
-    self.revocations.append(packet)
-    
+    # save copy of revocation?
+    # rebuild forwarding table without the revoked routes
     # remove dead entry from forwarding table
-    for network in packet[MESG]:
-      for entry in self.ftab:
-        if packet[SRCE] == entry[PEER] and entry[NTWK] == network[NTWK] and entry[NMSK] == network[NMSK]:
-          self.ftab.remove(entry)
-
+    print("FTABLE BEFORE REVOKE", self.ftab)
+    self.rebuildForwardingTable(packet)
+     
+    self.updates.append(packet)
+    print("FTABLE AFTER REVOKE", self.ftab)
     # send copies of revocation to neighbors
     newPacket = copy.deepcopy(packet)
     # update received from customer -> send updates to all neighbors
@@ -360,6 +364,7 @@ class Router:
         return self.update(srcif, packet)
     elif(t == DATA):
         print("Received data msg")
+        print(packet)
         return self.forward(srcif, packet)    
     elif(t == DUMP):
         print("Received dump msg")
