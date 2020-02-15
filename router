@@ -46,7 +46,6 @@ class Router:
     self.updates = []
     self.relations = {}
     self.sockets = {}
-    print (networks)
     self.ftab = []
     self.asn = asn
 
@@ -231,9 +230,7 @@ class Router:
           if s1[i] == s2[i]:
             continue
           elif abs(int(s1[i]) - int(s2[i])) == 1:
-              print("AN ADJACENT NEIGHBOR")
               return True
-      print("NOT ADJACENT NEIGHBOR")
       return False
 
   def same_atts(self, entry, packet):
@@ -242,7 +239,6 @@ class Router:
   
   def shift_mask_bit(self, mask):
       s = mask.split(".")
-      print("MASK", mask)
       for i in range(4):
           if not s[i] == '255':
               oct = s[i]
@@ -250,13 +246,10 @@ class Router:
               if s[i] == '0':
                   oct = s[i-1]
                   currIdx= i-1
-              print("OCT", oct)
               temp = int(bin(int(oct)<<1)[3:],2)
               s[currIdx] = str(temp)
-              print("SHIFTED OCT", temp)
               break
       shifted_mask = '.'.join(s)
-      print("SHIFTED MASK", shifted_mask)
       return shifted_mask
 
 
@@ -310,6 +303,7 @@ class Router:
     self.ftab = []
     print("revoke packet info: ", packet)
     for update in originalUpdates:
+   
       for network in packet[MESG]:
         # if it isn't the network being revoked 
         # update the route
