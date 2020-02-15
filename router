@@ -310,23 +310,15 @@ class Router:
     print("revoke packet info: ", packet)
     for update in originalUpdates:
       for network in packet[MESG]:
-        # if it isn't the network being revoked 
-        # update the route
-        sameSource = update[SRCE] == packet[SRCE]
-        sameDest = update[DEST] == packet[DEST] 
-        sameNetwork = update[MESG][NTWK] == network[NTWK]
-        sameNetmask = update[MESG][NMSK] != network[NMSK]
-        sameNetworkBeingRevoked = sameSource and sameDest and sameNetwork and sameNetmask
-
-        if not sameNetworkBeingRevoked:
-          # continue to update ftable
+        if update[SRCE] != packet[SRCE] and update[DEST] != packet[DEST] and update[MESG][NTWK] != network[NTWK] and update[MESG][NMSK] != network[NMSK]:
           if update[TYPE] == UPDT:
             self.update(update['srcif'], update)
             print("update route", update)
+          elif update[TYPE] == RVKE:
+            self.revoke(update)
+            print("revoke update", update)
 
-        if update[TYPE] == RVKE:
-          self.revoke(update)
-          print("revoke update", update)
+
  
 
   def revoke(self, packet):
