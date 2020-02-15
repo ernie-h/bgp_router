@@ -195,7 +195,8 @@ class Router:
       routes = self.get_origin_routes(routes, daddr)
       print("ROUTES FOR ORIGIN", routes)
       # 5. Lowest IP Address
-      routes = [min(routes)] 
+      if len(routes) > 0:
+        routes = [min(routes)] 
       print("ROUTES FOR LOWEST IP", routes)
       # Final check: enforce peering relationships
       print("RELATIONS", self.relations)
@@ -314,17 +315,19 @@ class Router:
         # update the route
         sameSource = update[SRCE] == packet[SRCE]
         sameDest = update[DEST] == packet[DEST] 
-        sameNetwork = update[MESG][NTWK] == network[NTWK]
-        sameNetmask = update[MESG][NMSK] != network[NMSK]
-        sameNetworkBeingRevoked = sameSource and sameDest and sameNetwork and sameNetmask
-
+        sameNetworkBeingRevoked = sameSource and sameDest
+        print("update", update)
+        print("network", network)
         if not sameNetworkBeingRevoked:
           # continue to update ftable
           if update[TYPE] == UPDT:
-            self.update(update['srcif'], update)
-            print("update route", update)
+            sameNetwork = update[MESG][NTWK] == network[NTWK]
+            sameNetmask = update[MESG][NMSK] == network[NMSK]
+            if not sameNetwork and not sameNetmask:
+              self.update(update['srcif'], update)
+              print("update route", update)
 
-        if update[TYPE] == RVKE:
+      if update[TYPE] == RVKE:
           self.revoke(update)
           print("revoke update", update)
  
@@ -332,15 +335,15 @@ class Router:
   def revoke(self, packet):
     """ handle revoke packets """
     # save copy of revocation?
-    self.updates.append(packet)
-    
+    # self.updates.append(packet)
+    self.rebuildForwardingTable(packet)    
     # remove dead entry from forwarding table
-    for network in packet[MESG]:
-      self.rebuildForwardingTable(packet)
-      for entry in self.ftab:
-        if packet[SRCE] == entry[PEER] and entry[NTWK] == network[NTWK] and entry[NMSK] == network[NMSK]:
-          self.ftab.remove(entry)
-
+    #for network in packet[MESG]:
+    #  self.rebuildForwardingTable(packet)
+    #  for entry in self.ftab:
+    #    if packet[SRCE] == entry[PEER] and entry[NTWK] == network[NTWK] and entry[NMSK] == network[NMSK]:
+    #      self.ftab.remove(entry)
+    self.updates.append(packet)
     # send copies of revocation to neighbors
     newPacket = copy.deepcopy(packet)
     # update received from customer -> send updates to all neighbors
