@@ -226,11 +226,20 @@ class Router:
   def adjacent_neighbor(self, entry_net, update_net):
       s1 = entry_net.split(".")
       s2 = update_net.split(".")
+      twoRaised = [2**j for j in range(8)]
+      print("TTWO RAISED", twoRaised)
+      print(entry_net)
+      print(update_net)
+      print("HEEEEEEEHEHEHE")
       for i in range(4):
           if s1[i] == s2[i]:
             continue
           elif abs(int(s1[i]) - int(s2[i])) == 1:
               return True
+          elif (s1[i] == "0" and int(s2[i]) in twoRaised) or (s2[i] == "0" and s1[i] in twoRaised):
+            print("THIS IS THE S1", s1)
+            print("THIS IS THE S2", s2)
+            return True
       return False
 
   def same_atts(self, entry, packet):
@@ -252,15 +261,40 @@ class Router:
       shifted_mask = '.'.join(s)
       return shifted_mask
 
-
+  def sameAfterNetmask(self, entry, packet):
+    print("AFTER NETMASK:", entry)
+    print("AFTER NETMASK - packet:", packet)
+    netmask = entry[NMSK].split(".")
+    s1 = entry[NTWK].split(".")
+    s2 = packet[NTWK].split(".")
+    #   same = True
+    for i in range(4):
+      afterNetmask = int(s2[i]) & int(netmask[i])
+      if s1[i] == s2[i]:
+        continue
+      elif int(s1[i]) == afterNetmask:
+        continue
+      else:
+        return False
+    return True
+ 
   def coalesce(self, packet):
     """ coalesce any routes that are right next to each other """
     coalesced = False
     for entry in self.ftab:
-        if self.adjacent_neighbor(entry[NTWK], packet[MESG][NTWK]) and self.same_atts(entry, packet):
-            temp = entry[NMSK]
-            entry[NMSK] = self.shift_mask_bit(temp)
-            coalesced = True
+       # if self.adjacent_neighbor(entry[NTWK], packet[MESG][NTWK]) and self.same_atts(entry, packet):
+          if self.same_atts(entry, packet):
+            #if self.adjacent_neighbor(entry[NTWK], packet[MESG][NTWK]) and self.sameAfterNetmask(entry, packet[MESG]):
+           # if self.sameAfterNetmask(entry, packet[MESG]):
+            #  temp = entry[NMSK]
+             # entry[NMSK] = self.shift_mask_bit(temp)
+            if self.adjacent_neighbor(entry[NTWK], packet[MESG][NTWK]):
+           # if self.sameAfterNetmask(entry, packet[MESG]) or self.adjacent_neighbor(entry[NTWK], packet[MESG][NTWK]):
+              temp = entry[NMSK]
+              entry[NMSK] = self.shift_mask_bit(temp)
+              coalesced = True
+            elif self.sameAfterNetmask(entry, packet[MESG]):
+              coalesced = True
     return coalesced
 
   def update(self, srcif, packet):
@@ -335,10 +369,13 @@ class Router:
             print("update route", update)
 
       if update[TYPE] == RVKE:
-          self.revoke(update)
+          self.updateRevokeFtab(update)
           print("revoke update", update)
  
-
+  def updateRevokeFtab(self, packet):
+    self.rebuildForwardingTable(packet)
+    self.updates.append(packet)
+ 
   def revoke(self, packet):
     """ handle revoke packets """
     # save copy of revocation?
