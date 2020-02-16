@@ -320,8 +320,6 @@ class Router:
         print("ROUTE ANNOUNCMENT TO "+ socket +": ", newPacket)
     return True
 
-<<<<<<< HEAD
-=======
   def updateTable(self, packet):
     self.updates.append(packet)
     msg = packet[MESG]
@@ -336,24 +334,12 @@ class Router:
           SORG: msg[SORG]
           }) 
 
->>>>>>> huh
   def rebuildForwardingTable(self, packet):
     # use revoke and update messages
     originalUpdates = copy.deepcopy(self.updates)
     self.updates = []
     self.ftab = []
-<<<<<<< HEAD
     for update in originalUpdates:
-      for network in packet[MESG]:
-        # if it isn't the network being revoked 
-        # update the route
-        if update[TYPE] == UPDT:
-          sameSource = update[SRCE] == packet[SRCE]
-          sameDest = update[DEST] == packet[DEST]
-=======
-    print("revoke packet info: ", packet)
-    for update in originalUpdates:
-   
       for network in packet[MESG]:
         # if it isn't the network being revoked 
         # update the route
@@ -363,56 +349,23 @@ class Router:
         print("network", network)
           # continue to update ftable
         if update[TYPE] == UPDT:
->>>>>>> huh
           sameNetwork = update[MESG][NTWK] == network[NTWK]
           sameNetmask = update[MESG][NMSK] == network[NMSK]
           sameNetworkBeingRevoked = sameSource and sameDest and sameNetwork and sameNetmask
           if not sameNetworkBeingRevoked:
-<<<<<<< HEAD
           # continue to update ftable
             self.update(update['srcif'], update)
-
       if update[TYPE] == RVKE:
         self.revoke(update)
- 
 
-  def revoke(self, packet):
-    """ handle revoke packets """
-    # save copy of revocation?
-    # rebuild forwarding table without the revoked routes
-    # remove dead entry from forwarding table
-    print("FTABLE BEFORE REVOKE", self.ftab)
-    self.rebuildForwardingTable(packet)
-     
-    self.updates.append(packet)
-    print("FTABLE AFTER REVOKE", self.ftab)
-=======
-            self.updateTable(update)
-            print("update route", update)
-
-      if update[TYPE] == RVKE:
-          self.updateRevokeFtab(update)
-          print("revoke update", update)
- 
   def updateRevokeFtab(self, packet):
     self.rebuildForwardingTable(packet)
     self.updates.append(packet)
  
   def revoke(self, packet):
     """ handle revoke packets """
-    # save copy of revocation?
-    print("\nFORWARDING TABLE BEFORE REBUILDING:", self.ftab)
-    # self.updates.append(packet)
     self.rebuildForwardingTable(packet) 
-    print("\nFORWARDING TABLE AFTER REBUILDING:", self.ftab)   
-    # remove dead entry from forwarding table
-    #for network in packet[MESG]:
-    #  self.rebuildForwardingTable(packet)
-    #  for entry in self.ftab:
-    #    if packet[SRCE] == entry[PEER] and entry[NTWK] == network[NTWK] and entry[NMSK] == network[NMSK]:
-    #      self.ftab.remove(entry)
     self.updates.append(packet)
->>>>>>> huh
     # send copies of revocation to neighbors
     newPacket = copy.deepcopy(packet)
     # update received from customer -> send updates to all neighbors
@@ -458,13 +411,6 @@ class Router:
     if(t == UPDT):
         return self.update(srcif, packet)
     elif(t == DATA):
-<<<<<<< HEAD
-        print("Received data msg")
-        print(packet)
-=======
-        print("~~~~~~~~~Received data msg~~~~~~~~~~~~")
-        print("MSG:", packet)
->>>>>>> huh
         return self.forward(srcif, packet)    
     elif(t == DUMP):
         print("Received dump msg")
