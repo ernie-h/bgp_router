@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """ Skeleton Implementation of Project 2 for NEU CS3700 """
 
 import argparse
@@ -64,6 +63,7 @@ class Router:
   
   def lookup_routes(self, daddr):
     """ Lookup all valid routes for an address """
+    print("FORWARDING TABLE ", self.ftab)
     outroutes = []
     for entry in self.ftab:
         if self.similar_network(entry['network'], daddr):
@@ -176,25 +176,34 @@ class Router:
     # TODO
     peer = None
     routes = self.lookup_routes(daddr)
+    print("ROUTES AFTER LOOKUP ROUTES:", routes)
     routes = self.get_highest_prefix(daddr, routes)
     # Rules go here
     if routes:
       # 1. Highest Preference
       routes = self.get_highest_preference(routes, daddr)
       # 2. Self Origin
+      print("ROUTES FOR HIGHEST PREF", routes)
       routes = self.get_self_origin(routes, daddr)
+      print("ROUTES FOR self origin", routes)
       # 3. Shortest ASPath
       routes = self.get_shortest_as_path(routes, daddr)
+      print("ROUTES FOR ASPATH", routes)
       # 4. IGP > EGP > UNK
       routes = self.get_origin_routes(routes, daddr)
+      print("ROUTES FOR ORIGIN", routes)
       # 5. Lowest IP Address
       if len(routes) > 0:
         routes = [min(routes)] 
       print("ROUTES FOR LOWEST IP", routes)
       # Final check: enforce peering relationships
+      print("RELATIONS", self.relations)
       routes = self.filter_relationships(srcif, daddr, routes)
     if (len(routes) == 1):
         peer = routes[0]
+        print("ROUTES IS OF LENGTH 1")
+    else:
+        print("ERROR MORE THAN 1 ROUTE", routes) 
     return self.sockets[peer] if peer else None
 
   def forward(self, srcif, packet):
@@ -339,7 +348,9 @@ class Router:
     originalUpdates = copy.deepcopy(self.updates)
     self.updates = []
     self.ftab = []
+    print("revoke packet info: ", packet)
     for update in originalUpdates:
+   
       for network in packet[MESG]:
         # if it isn't the network being revoked 
         # update the route
@@ -353,18 +364,30 @@ class Router:
           sameNetmask = update[MESG][NMSK] == network[NMSK]
           sameNetworkBeingRevoked = sameSource and sameDest and sameNetwork and sameNetmask
           if not sameNetworkBeingRevoked:
-          # continue to update ftable
-            self.update(update['srcif'], update)
-      if update[TYPE] == RVKE:
-        self.revoke(update)
+            self.updateTable(update)
+            print("update route", update)
 
+      if update[TYPE] == RVKE:
+          self.updateRevokeFtab(update)
+          print("revoke update", update)
+ 
   def updateRevokeFtab(self, packet):
     self.rebuildForwardingTable(packet)
     self.updates.append(packet)
  
   def revoke(self, packet):
     """ handle revoke packets """
+    # save copy of revocation?
+    print("\nFORWARDING TABLE BEFORE REBUILDING:", self.ftab)
+    # self.updates.append(packet)
     self.rebuildForwardingTable(packet) 
+    print("\nFORWARDING TABLE AFTER REBUILDING:", self.ftab)   
+    # remove dead entry from forwarding table
+    #for network in packet[MESG]:
+    #  self.rebuildForwardingTable(packet)
+    #  for entry in self.ftab:
+    #    if packet[SRCE] == entry[PEER] and entry[NTWK] == network[NTWK] and entry[NMSK] == network[NMSK]:
+    #      self.ftab.remove(entry)
     self.updates.append(packet)
     # send copies of revocation to neighbors
     newPacket = copy.deepcopy(packet)
@@ -411,6 +434,8 @@ class Router:
     if(t == UPDT):
         return self.update(srcif, packet)
     elif(t == DATA):
+        print("~~~~~~~~~Received data msg~~~~~~~~~~~~")
+        print("MSG:", packet)
         return self.forward(srcif, packet)    
     elif(t == DUMP):
         print("Received dump msg")
@@ -452,4 +477,5 @@ if __name__ == "__main__":
   PARSER.add_argument('networks', metavar='networks', type=str, nargs='+', help="networks")
   ARGS = PARSER.parse_args()
   Router(ARGS.asn, ARGS.networks).run()
+
 
